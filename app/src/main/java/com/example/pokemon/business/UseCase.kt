@@ -92,7 +92,7 @@ abstract class BaseUseCase<P, O, R> where P : Any, O : Any, R : Any {
             }
     }
 
-    fun getAsyncResult(): Flow<Resource<R>> = stream.onCompletion { println("COMPLETATO") }
+    fun getAsyncResult(): Flow<Resource<R>> = stream
 
     fun exec(param: P?): Flow<Resource<R>> = invoke(param)
 
