@@ -101,8 +101,6 @@ abstract class BaseUseCase<P, O, R> where P : Any, O : Any, R : Any {
 
     protected abstract suspend fun doTask(param: P?, operation: Operation<O>)
 
-    private var param: P? = null
-
     abstract fun start(param: P?): Flow<Resource<R>>
 }
 
