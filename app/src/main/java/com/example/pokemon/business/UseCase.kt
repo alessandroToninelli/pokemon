@@ -74,7 +74,7 @@ abstract class PageUseCase<P : Any, R : Any> : BaseUseCase<P, Pager<Int, R>, Pag
 
 abstract class BaseUseCase<P, O, R> where P : Any, O : Any, R : Any {
 
-    private var stream: MutableSharedFlow<Resource<R>>? = null
+    private var stream = buildResourceStream<R>()
 
     @ExperimentalCoroutinesApi
     private operator fun invoke(param: P?): Flow<Resource<R>> {
@@ -92,18 +92,12 @@ abstract class BaseUseCase<P, O, R> where P : Any, O : Any, R : Any {
             }
     }
 
-
-    private fun getStream(): MutableSharedFlow<Resource<R>>{
-        if(stream == null) stream = buildResourceStream()
-        return stream!!
-    }
-
-    fun getAsyncResult(): Flow<Resource<R>> = getStream()
+    fun getAsyncResult(): Flow<Resource<R>> = stream.onCompletion { println("COMPLETATO") }
 
     fun exec(param: P?): Flow<Resource<R>> = invoke(param)
 
     fun execAsync(param: P?, scope: CoroutineScope) {
-        exec(param).onEach { getStream().tryEmit(it) }.launchIn(scope)
+        exec(param).onEach { stream.tryEmit(it) }.launchIn(scope)
     }
 
     protected abstract suspend fun doTask(param: P?, operation: Operation<O>)

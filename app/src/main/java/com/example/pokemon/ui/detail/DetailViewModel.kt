@@ -24,7 +24,7 @@ class DetailViewModel(
 
    private val pokemonResult = getPokemonDetailByIdUseCase.getAsyncResult()
 
-    val urls = getPokemonDetailByIdUseCase.getAsyncResult().map {
+    val urls = pokemonResult.map {
         it.mapSuccess { detail ->
             val sprites = detail.sprites
             val urlsList = mutableListOf<String>()
