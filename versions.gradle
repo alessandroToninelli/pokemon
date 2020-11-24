@@ -1,0 +1,15 @@
+ext {
+    kotlin_version = "1.4.20"
+    lifecycle_version = "2.2.0"
+    nav_version = "2.3.1"
+    coroutine_version = "1.4.0"
+    networkcall_version = "1.1.0"
+    retrofit_version = "2.9.0"
+    koin_version = "2.2.1"
+    okhttp3_version = "4.2.1"
+    paging_version = "3.0.0-alpha09"
+    glide_version = "4.11.0"
+    fragment_ktx_version = "1.2.5"
+    activity_version = "1.1.0"
+
+}

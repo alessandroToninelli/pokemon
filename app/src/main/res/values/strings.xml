@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Pokemon</string>
+
+    <string name="label_list">List</string>
+    <string name="label_detail">Detail</string>
+
+
+    <string name="detail_label_stats">Stats</string>
+    <string name="detail_label_types">Types</string>
+
+    <string name="stat_label_base_stat">Base stat</string>
+    <string name="stat_label_effort">Effort</string>
+    <string name="stat_label_name">Name</string>
+
+    <string name="type_label_slot">Slot</string>
+    <string name="type_label_name">Name</string>
+</resources>
