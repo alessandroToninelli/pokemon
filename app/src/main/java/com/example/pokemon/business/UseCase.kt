@@ -76,7 +76,6 @@ abstract class BaseUseCase<P, O, R> where P : Any, O : Any, R : Any {
 
     private var stream = buildResourceStream<R>()
 
-    @ExperimentalCoroutinesApi
     private operator fun invoke(param: P?): Flow<Resource<R>> {
 
         return start(param)
