@@ -74,7 +74,7 @@ abstract class PageUseCase<P : Any, R : Any> : BaseUseCase<P, Pager<Int, R>, Pag
 
 abstract class BaseUseCase<P, O, R> where P : Any, O : Any, R : Any {
 
-    private var stream = buildResourceStream<R>()
+    private val stream = buildResourceStream<R>()
 
     private operator fun invoke(param: P?): Flow<Resource<R>> {
 
