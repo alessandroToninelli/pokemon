@@ -13,109 +13,134 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 
-abstract class UseCase<P : Any, R : Any> : BaseUseCase<P, Either<Failure, R>, R>() {
+abstract class BaseUseCase<P, M, R> where P : Any, M : Any, R : Any {
 
-    override fun start(param: P?): Flow<Resource<R>> = callbackFlow {
-        doTask(param, object : Operation<Either<Failure, R>> {
-            override fun onNextValue(value: Either<Failure, R>) {
-                value.fold(
-                    {
-                        val resource: Resource<R> = Resource.Error(it)
-                        sendBlocking(resource)
-                    },
-                    {
-                        val resource: Resource<R> = Resource.Success(it)
-                        sendBlocking(resource)
-                    })
+    protected abstract fun mapper(value: M): Resource<R>
+
+    protected abstract suspend fun doTask(param: P?, operation: Operation<M>)
+
+    protected fun start(param: P?): Flow<Resource<R>> = callbackFlow<Resource<R>> {
+        doTask(param, object : Operation<M> {
+            override fun onNextValue(value: M) {
+                sendBlocking(mapper(value))
             }
 
             override fun onError(e: Failure) {
-                val resource: Resource<R> = Resource.Error(e)
-                sendBlocking(resource)
+                sendBlocking(Resource.Error(e))
                 close()
             }
 
             override fun onCompletion() {
                 close()
             }
-
         })
 
         awaitClose { }
-    }
+
+    }.onStart {
+        emit(Resource.Loading()) }
+        .onCompletion { println("Completed ${this@BaseUseCase}")}
+        .flowOn(Dispatchers.IO)
+        .catch {
+            if (it is Failure)
+                emit(Resource.Error(it))
+            else
+                emit(Resource.Error(Failure.Error(it)))
+        }
+
+
 
 }
 
-abstract class PageUseCase<P : Any, R : Any> : BaseUseCase<P, Pager<Int, R>, Pager<Int, R>>() {
 
+abstract class FlowUseCase<P, O, R> :
+    BaseUseCase<P, O, R>() where P : Any, R : Any, O : Any {
 
-    override fun start(param: P?): Flow<Resource<Pager<Int, R>>> = callbackFlow {
-
-        doTask(param, object : Operation<Pager<Int, R>> {
-            override fun onNextValue(value: Pager<Int, R>) {
-                sendBlocking(Resource.Success(value))
-            }
-
-            override fun onCompletion() {
-                close()
-            }
-
-            override fun onError(e: Failure) {
-                val resource: Resource<R> = Resource.Error(e)
-                sendBlocking(resource)
-                close()
-            }
-        })
-
-        awaitClose { }
-    }
+    operator fun invoke(param: P?): Flow<Resource<R>> = start(param)
 
 }
 
-abstract class BaseUseCase<P, O, R> where P : Any, O : Any, R : Any {
+abstract class SingleUseCase<P, O, R> :
+    BaseUseCase<P, O, R>() where P : Any, R : Any, O : Any {
 
-    private val stream = buildResourceStream<R>()
+    suspend operator fun invoke(param: P?): Resource<R> =
+        start(param).filterNot { it.status == Status.LOADING }.first()
 
-    private operator fun invoke(param: P?): Flow<Resource<R>> {
-
-        return start(param)
-            .onStart {
-                emit(Resource.Loading())
-            }
-            .flowOn(Dispatchers.IO)
-            .catch {
-                if (it is Failure)
-                    emit(Resource.Error(it))
-                else
-                    emit(Resource.Error(Failure.Error(it)))
-            }
-    }
-
-    fun getAsyncResult(): Flow<Resource<R>> = stream
-
-    fun exec(param: P?): Flow<Resource<R>> = invoke(param)
-
-    fun execAsync(param: P?, scope: CoroutineScope) {
-        exec(param).onEach { stream.tryEmit(it) }.launchIn(scope)
-    }
-
-    protected abstract suspend fun doTask(param: P?, operation: Operation<O>)
-
-    abstract fun start(param: P?): Flow<Resource<R>>
 }
 
-fun <P : Any, O : Any, R : Any> ViewModel.exec(
-    useCase: BaseUseCase<P, O, R>,
+abstract class EitherFlowUseCase<P, R>: FlowUseCase<P, Either<Failure, R>, R>()  where P : Any, R : Any {
+
+    override fun mapper(value: Either<Failure, R>): Resource<R> {
+        return value.fold(
+            {
+                Resource.Error(it)
+            },
+            {
+                Resource.Success(it)
+            })
+    }
+}
+
+abstract class EitherSingleUseCase<P, R>: SingleUseCase<P, Either<Failure, R>, R>()  where P : Any, R : Any {
+
+    override fun mapper(value: Either<Failure, R>): Resource<R> {
+        return value.fold(
+            {
+                Resource.Error(it)
+            },
+            {
+                Resource.Success(it)
+            })
+    }
+}
+
+abstract class ValueFlowUseCase<P, R>: FlowUseCase<P, R, R>()where P : Any, R : Any{
+    override fun mapper(value: R): Resource<R> {
+        return Resource.Success(value)
+    }
+}
+
+abstract class ValueSingleUseCase<P, R>: SingleUseCase<P, R, R>()where P : Any, R : Any{
+    override fun mapper(value: R): Resource<R> {
+        return Resource.Success(value)
+    }
+}
+
+
+fun <P,O,R> execFlow(
+    useCase: FlowUseCase<P,O,R>,
     param: P? = null
-) = useCase.exec(param)
+): Flow<Resource<R>> where P : Any, R : Any, O : Any{
+    return useCase.invoke(param)
+}
 
-fun <P : Any, O : Any, R : Any> ViewModel.execAsync(
-    useCase: BaseUseCase<P, O, R>,
+suspend fun <P,O,R> execSingle(
+    useCase: SingleUseCase<P, O, R>,
+    param: P? = null
+): Resource<R> where P : Any, R : Any, O : Any {
+    return useCase.invoke(param)
+}
+
+fun <P,O,R> execStream(
+    stream : MutableSharedFlow<Resource<R>>,
+    useCase: FlowUseCase<P,O,R>,
+    param: P? = null,
+    scope: CoroutineScope
+) where P : Any, R : Any, O : Any{
+    useCase.invoke(param).onEach { stream.tryEmit(it) }.launchIn(scope)
+}
+
+fun <P,O,R> ViewModel.execStream(
+    stream : MutableSharedFlow<Resource<R>>,
+    useCase: FlowUseCase<P,O,R>,
     param: P? = null,
     scope: CoroutineScope = viewModelScope
-) {
-    useCase.execAsync(param, scope)
+) where P : Any, R : Any, O : Any{
+    useCase.invoke(param).onEach { stream.tryEmit(it) }.launchIn(scope)
 }
+
+
+
 
 
 

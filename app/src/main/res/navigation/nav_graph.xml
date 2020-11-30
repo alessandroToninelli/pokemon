@@ -23,4 +23,13 @@
             android:name="id"
             app:argType="integer" />
     </fragment>
+    <fragment
+        android:id="@+id/slideshowFragment"
+        android:name="com.example.pokemon.ui.slideshow.SlideshowFragment"
+        android:label="fragment_slideshow"
+        tools:layout="@layout/fragment_slideshow" />
+    <action
+        android:id="@+id/action_global_slideshowFragment"
+        app:destination="@id/slideshowFragment"
+        />
 </navigation>

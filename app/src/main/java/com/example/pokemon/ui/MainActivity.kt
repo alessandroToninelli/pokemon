@@ -2,11 +2,15 @@ package com.example.pokemon.ui
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.Gravity
+import android.view.Menu
+import android.view.MenuItem
+import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
+import androidx.navigation.ui.*
+import com.example.pokemon.NavGraphDirections
 import com.example.pokemon.R
 import com.example.pokemon.databinding.ActivityMainBinding
 import kotlinx.coroutines.channels.BufferOverflow
@@ -32,12 +36,35 @@ class MainActivity : ScopeActivity() {
 
     private fun setUpView() {
         val navController = findNavController(R.id.nav_host_fragment)
-        setupActionBarWithNavController(navController, AppBarConfiguration(navController.graph))
+        val appBarConfiguration =
+            AppBarConfiguration(setOf(R.id.listFragment, R.id.slideshowFragment), binding.drawerLayout)
+        binding.appBarMain.toolbar.apply {
+            setSupportActionBar(this)
+            setupWithNavController(navController, appBarConfiguration)
+        }
+        binding.navView.setupWithNavController(navController)
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_fragment)
-        return navController.navigateUp(AppBarConfiguration(navController.graph))
-                || super.onSupportNavigateUp()
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.toolbar_menu, menu)
+        return true
     }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val navController = findNavController(R.id.nav_host_fragment)
+        return when (item.itemId) {
+            R.id.slideshowFragment -> {
+                if(navController.currentDestination?.id == R.id.slideshowFragment)
+                    navController.popBackStack()
+                else
+                    navController.navigate(NavGraphDirections.actionGlobalSlideshowFragment())
+                true
+            }
+            else -> item.onNavDestinationSelected(navController) || super.onOptionsItemSelected(
+                item
+            )
+        }
+    }
+
+
 }
