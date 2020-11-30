@@ -13,15 +13,15 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 
-abstract class BaseUseCase<P, M, R> where P : Any, M : Any, R : Any {
+abstract class BaseUseCase<P, O, R> where P : Any, O : Any, R : Any {
 
-    protected abstract fun mapper(value: M): Resource<R>
+    protected abstract fun mapper(value: O): Resource<R>
 
-    protected abstract suspend fun doTask(param: P?, operation: Operation<M>)
+    protected abstract suspend fun doTask(param: P?, operation: Operation<O>)
 
     protected fun start(param: P?): Flow<Resource<R>> = callbackFlow<Resource<R>> {
-        doTask(param, object : Operation<M> {
-            override fun onNextValue(value: M) {
+        doTask(param, object : Operation<O> {
+            override fun onNextValue(value: O) {
                 sendBlocking(mapper(value))
             }
 
@@ -47,9 +47,6 @@ abstract class BaseUseCase<P, M, R> where P : Any, M : Any, R : Any {
             else
                 emit(Resource.Error(Failure.Error(it)))
         }
-
-
-
 }
 
 
@@ -134,9 +131,8 @@ fun <P,O,R> ViewModel.execStream(
     stream : MutableSharedFlow<Resource<R>>,
     useCase: FlowUseCase<P,O,R>,
     param: P? = null,
-    scope: CoroutineScope = viewModelScope
 ) where P : Any, R : Any, O : Any{
-    useCase.invoke(param).onEach { stream.tryEmit(it) }.launchIn(scope)
+    execStream(stream, useCase, param, viewModelScope)
 }
 
 
