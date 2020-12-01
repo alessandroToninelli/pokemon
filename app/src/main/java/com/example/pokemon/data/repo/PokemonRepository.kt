@@ -16,7 +16,6 @@ interface PokemonRepository {
 
     suspend fun pokemonDetail(id: Int): Either<Failure, PokemonDetail>
 
-
 }
 
 

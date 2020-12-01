@@ -17,38 +17,23 @@ abstract class BaseUseCase<P, O, R> where P : Any, O : Any, R : Any {
 
     protected abstract fun mapper(value: O): Resource<R>
 
-    protected abstract suspend fun doTask(param: P?, operation: Operation<O>)
+    protected abstract fun doTask(param: P?): Flow<O>
 
-    protected fun start(param: P?): Flow<Resource<R>> = callbackFlow<Resource<R>> {
-        doTask(param, object : Operation<O> {
-            override fun onNextValue(value: O) {
-                sendBlocking(mapper(value))
+    protected fun start(param: P?): Flow<Resource<R>> {
+        return doTask(param)
+            .flowOn(Dispatchers.IO)
+            .map { mapper(it) }
+            .catch {
+                if (it is Failure)
+                    emit(Resource.Error(it))
+                else
+                    emit(Resource.Error(Failure.Error(it)))
             }
-
-            override fun onError(e: Failure) {
-                sendBlocking(Resource.Error(e))
-                close()
-            }
-
-            override fun onCompletion() {
-                close()
-            }
-        })
-
-        awaitClose { }
-
-    }.onStart {
-        emit(Resource.Loading()) }
-        .onCompletion { println("Completed ${this@BaseUseCase}")}
-        .flowOn(Dispatchers.IO)
-        .catch {
-            if (it is Failure)
-                emit(Resource.Error(it))
-            else
-                emit(Resource.Error(Failure.Error(it)))
-        }
+            .flowOn(Dispatchers.Default)
+            .onStart { emit(Resource.Loading()) }
+            .onCompletion { println("Completed ${this@BaseUseCase}") }
+    }
 }
-
 
 abstract class FlowUseCase<P, O, R> :
     BaseUseCase<P, O, R>() where P : Any, R : Any, O : Any {
@@ -65,7 +50,8 @@ abstract class SingleUseCase<P, O, R> :
 
 }
 
-abstract class EitherFlowUseCase<P, R>: FlowUseCase<P, Either<Failure, R>, R>()  where P : Any, R : Any {
+abstract class EitherFlowUseCase<P, R> :
+    FlowUseCase<P, Either<Failure, R>, R>() where P : Any, R : Any {
 
     override fun mapper(value: Either<Failure, R>): Resource<R> {
         return value.fold(
@@ -78,7 +64,8 @@ abstract class EitherFlowUseCase<P, R>: FlowUseCase<P, Either<Failure, R>, R>() 
     }
 }
 
-abstract class EitherSingleUseCase<P, R>: SingleUseCase<P, Either<Failure, R>, R>()  where P : Any, R : Any {
+abstract class EitherSingleUseCase<P, R> :
+    SingleUseCase<P, Either<Failure, R>, R>() where P : Any, R : Any {
 
     override fun mapper(value: Either<Failure, R>): Resource<R> {
         return value.fold(
@@ -91,47 +78,47 @@ abstract class EitherSingleUseCase<P, R>: SingleUseCase<P, Either<Failure, R>, R
     }
 }
 
-abstract class ValueFlowUseCase<P, R>: FlowUseCase<P, R, R>()where P : Any, R : Any{
+abstract class ValueFlowUseCase<P, R> : FlowUseCase<P, R, R>() where P : Any, R : Any {
     override fun mapper(value: R): Resource<R> {
         return Resource.Success(value)
     }
 }
 
-abstract class ValueSingleUseCase<P, R>: SingleUseCase<P, R, R>()where P : Any, R : Any{
+abstract class ValueSingleUseCase<P, R> : SingleUseCase<P, R, R>() where P : Any, R : Any {
     override fun mapper(value: R): Resource<R> {
         return Resource.Success(value)
     }
 }
 
 
-fun <P,O,R> execFlow(
-    useCase: FlowUseCase<P,O,R>,
+fun <P, O, R> execFlow(
+    useCase: FlowUseCase<P, O, R>,
     param: P? = null
-): Flow<Resource<R>> where P : Any, R : Any, O : Any{
+): Flow<Resource<R>> where P : Any, R : Any, O : Any {
     return useCase.invoke(param)
 }
 
-suspend fun <P,O,R> execSingle(
+suspend fun <P, O, R> execSingle(
     useCase: SingleUseCase<P, O, R>,
     param: P? = null
 ): Resource<R> where P : Any, R : Any, O : Any {
     return useCase.invoke(param)
 }
 
-fun <P,O,R> execStream(
-    stream : MutableSharedFlow<Resource<R>>,
-    useCase: FlowUseCase<P,O,R>,
+fun <P, O, R> execStream(
+    stream: MutableSharedFlow<Resource<R>>,
+    useCase: FlowUseCase<P, O, R>,
     param: P? = null,
     scope: CoroutineScope
-) where P : Any, R : Any, O : Any{
+) where P : Any, R : Any, O : Any {
     useCase.invoke(param).onEach { stream.tryEmit(it) }.launchIn(scope)
 }
 
-fun <P,O,R> ViewModel.execStream(
-    stream : MutableSharedFlow<Resource<R>>,
-    useCase: FlowUseCase<P,O,R>,
+fun <P, O, R> ViewModel.execStream(
+    stream: MutableSharedFlow<Resource<R>>,
+    useCase: FlowUseCase<P, O, R>,
     param: P? = null,
-) where P : Any, R : Any, O : Any{
+) where P : Any, R : Any, O : Any {
     execStream(stream, useCase, param, viewModelScope)
 }
 
