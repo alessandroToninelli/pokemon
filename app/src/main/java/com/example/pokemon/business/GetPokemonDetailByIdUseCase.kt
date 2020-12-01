@@ -5,8 +5,12 @@ import com.example.pokemon.model.PokemonDetail
 import com.example.pokemon.vo.Either
 import com.example.pokemon.vo.Failure
 import com.example.pokemon.vo.left
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.cancel
 import kotlinx.coroutines.flow.flow
+import kotlin.coroutines.cancellation.CancellationException
 
 class GetPokemonDetailByIdUseCase(private val pokemonRepository: PokemonRepository): EitherFlowUseCase<Int, PokemonDetail>() {
 

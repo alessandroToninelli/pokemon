@@ -16,15 +16,6 @@ inline fun <S : Any, E : Any, T : Any> ResponseNetwork<S, E>.mapSuccess(transfor
     }
 }
 
-fun <R> Flow<R>.either(): Flow<Either<Failure, R>> =
-    flow<Either<Failure, R>> {
-        collect {
-            emit(right(it))
-        }
-    }.catch {
-        it.printStackTrace()
-        emit(left(Failure.Error(it)))
-    }
 
 
 

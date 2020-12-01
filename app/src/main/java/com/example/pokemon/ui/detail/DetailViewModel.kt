@@ -45,7 +45,7 @@ class DetailViewModel(
     val name = _pokemonResultStream.map { it.mapSuccess { it.name } }.asLiveData()
 
     fun loadDetail(id: Int) {
-        execStream(_pokemonResultStream, getPokemonDetailByIdUseCase, id)
+        execStream(_pokemonResultStream, getPokemonDetailByIdUseCase)
     }
 
 }
