@@ -1,8 +1,5 @@
 package com.example.pokemon.vo
 
-import com.example.pokemon.model.PokemonDetail
-import kotlinx.coroutines.flow.FlowCollector
-
 
 sealed class Either<out L, out R> {
 
@@ -127,6 +124,5 @@ inline fun <L : Any> leftCatching(block: () -> L): Either<L, Exception> {
 fun <L> left(left: L) = Either.Left(left)
 
 fun <R> right(right: R) = Either.Right(right)
-
 
 
