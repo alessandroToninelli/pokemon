@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 abstract class BaseUseCase<P, O, R> where P : Any, O : Any, R : Any {
 
-    protected abstract fun mapper(value: O): Resource<R>
+    protected abstract suspend fun mapper(value: O): Resource<R>
 
     protected abstract fun doTask(param: P?): Flow<O>
 
@@ -33,7 +33,9 @@ abstract class BaseUseCase<P, O, R> where P : Any, O : Any, R : Any {
             .onStart { emit(Resource.Loading()) }
             .onCompletion { println("Completed ${this@BaseUseCase}") }
     }
+
 }
+
 
 abstract class FlowUseCase<P, O, R> :
     BaseUseCase<P, O, R>() where P : Any, R : Any, O : Any {
@@ -53,7 +55,7 @@ abstract class SingleUseCase<P, O, R> :
 abstract class EitherFlowUseCase<P, R> :
     FlowUseCase<P, Either<Failure, R>, R>() where P : Any, R : Any {
 
-    override fun mapper(value: Either<Failure, R>): Resource<R> {
+    override suspend fun mapper(value: Either<Failure, R>): Resource<R> {
         return value.fold(
             {
                 Resource.Error(it)
@@ -61,13 +63,14 @@ abstract class EitherFlowUseCase<P, R> :
             {
                 Resource.Success(it)
             })
+
     }
 }
 
 abstract class EitherSingleUseCase<P, R> :
     SingleUseCase<P, Either<Failure, R>, R>() where P : Any, R : Any {
 
-    override fun mapper(value: Either<Failure, R>): Resource<R> {
+    override suspend fun mapper(value: Either<Failure, R>): Resource<R> {
         return value.fold(
             {
                 Resource.Error(it)
@@ -79,17 +82,16 @@ abstract class EitherSingleUseCase<P, R> :
 }
 
 abstract class ValueFlowUseCase<P, R> : FlowUseCase<P, R, R>() where P : Any, R : Any {
-    override fun mapper(value: R): Resource<R> {
+    override suspend fun mapper(value: R): Resource<R> {
         return Resource.Success(value)
     }
 }
 
 abstract class ValueSingleUseCase<P, R> : SingleUseCase<P, R, R>() where P : Any, R : Any {
-    override fun mapper(value: R): Resource<R> {
+    override suspend fun mapper(value: R): Resource<R> {
         return Resource.Success(value)
     }
 }
-
 
 fun <P, O, R> execFlow(
     useCase: FlowUseCase<P, O, R>,
@@ -121,7 +123,6 @@ fun <P, O, R> ViewModel.execStream(
 ) where P : Any, R : Any, O : Any {
     execStream(stream, useCase, param, viewModelScope)
 }
-
 
 
 
