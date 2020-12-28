@@ -15,8 +15,6 @@ class PokemonApplication : Application() {
             androidContext(this@PokemonApplication)
             KoinManager.loadModules()
         }
-
-
     }
 
 }
